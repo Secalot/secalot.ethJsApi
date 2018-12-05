@@ -1,0 +1,22 @@
+{
+  "env": {
+    "development": {
+      "presets": ["@babel/preset-env"],
+      "plugins": ["@babel/plugin-transform-runtime"]
+    },
+    "debug": {
+      "presets": [
+        [
+          "@babel/preset-env",
+          {
+            "targets": {
+              "node": 9
+            }
+          }
+        ]
+      ],
+      "sourceMaps": true,
+      "retainLines": true
+    }
+  }  
+}

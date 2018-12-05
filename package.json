@@ -1,0 +1,27 @@
+{
+  "name": "secalot-eth-api",
+  "version": "0.0.1",
+  "description": "Secalot Ethereum API",
+  "scripts": {
+    "build": "rollup -c",
+    "test": "babel-node .//tests//index.js"
+  },
+  "author": "Matvey Mukha",
+  "license": "ISC",
+  "dependencies": {
+    "node-hid": "^0.7.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.1.6",
+    "@babel/node": "^7.0.0",
+    "@babel/plugin-transform-runtime": "^7.1.0",
+    "@babel/preset-env": "^7.1.6",
+    "@babel/runtime": "^7.2.0",
+    "rollup": "^0.67.3",
+    "rollup-plugin-json": "^3.1.0",
+    "rollup-plugin-commonjs": "^9.2.0",
+    "rollup-plugin-babel": "^4.0.3",
+    "rollup-plugin-node-resolve": "^3.4.0"
+  },
+  "main": "dist/index.js"
+}
