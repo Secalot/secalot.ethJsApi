@@ -34,8 +34,7 @@ class SecalotTransportNodeHid {
 
   static getConnectedDevices () {
     var devices = hid.devices().filter(function (deviceInfo) {
-      if ((deviceInfo.usagePage === 0xF1D0) &&
-      (deviceInfo.usage === 1) &&
+      if ((deviceInfo.interface === 0x01) &&
       (deviceInfo.vendorId === 0x1209) &&
       (deviceInfo.productId === 0x7000)) {
         return true
