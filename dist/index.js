@@ -416,8 +416,14 @@ function () {
     key: "getConnectedDevices",
     value: function getConnectedDevices() {
       var devices = hid.devices().filter(function (deviceInfo) {
-        if (deviceInfo.interface === 0x01 && deviceInfo.vendorId === 0x1209 && deviceInfo.productId === 0x7000) {
-          return true;
+        if (os.platform() === 'linux') {
+          if (deviceInfo.interface === 0x01 && deviceInfo.vendorId === 0x1209 && deviceInfo.productId === 0x7000) {
+            return true;
+          }
+        } else {
+          if (deviceInfo.usagePage === 0xF1D0 && deviceInfo.vendorId === 0x1209 && deviceInfo.productId === 0x7000) {
+            return true;
+          }
         }
 
         return false;

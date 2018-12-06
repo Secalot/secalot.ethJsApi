@@ -1,6 +1,6 @@
 {
   "name": "secalot-eth-api",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Secalot Ethereum API",
   "scripts": {
     "build": "rollup -c",
