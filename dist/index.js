@@ -57,6 +57,10 @@ function () {
                 return this._init();
 
               case 3:
+                _context.next = 5;
+                return this._checkResponseStructure();
+
+              case 5:
               case "end":
                 return _context.stop();
             }
@@ -336,74 +340,152 @@ function () {
       return _receiveResponse;
     }()
   }, {
-    key: "sendApdu",
+    key: "_wrapApdu",
+    value: function _wrapApdu(apdu) {
+      if (apdu.length > 255 - 8) {
+        throw new Error('APDU length too big.');
+      }
+
+      var offset = 0;
+      var wrappedApdu = Buffer.alloc(7 + 32 + 32 + 1 + 8 + apdu.length);
+      var magic = Buffer.from('1122334455667788', 'hex');
+      wrappedApdu[offset++] = 0x00;
+      wrappedApdu[offset++] = 0x02;
+      wrappedApdu[offset++] = 0x03;
+      wrappedApdu[offset++] = 0x00;
+      wrappedApdu[offset++] = 0x00;
+      wrappedApdu.writeUInt16BE(wrappedApdu.length - 7, offset);
+      offset += 2;
+      wrappedApdu.fill(0, offset, offset + 64);
+      offset += 64;
+      wrappedApdu[offset++] = apdu.length + 8;
+      magic.copy(wrappedApdu, offset);
+      offset += 8;
+      apdu.copy(wrappedApdu, offset);
+      return wrappedApdu;
+    }
+  }, {
+    key: "_checkResponseStructure",
     value: function () {
-      var _sendApdu = _asyncToGenerator(
+      var _checkResponseStructure2 = _asyncToGenerator(
       /*#__PURE__*/
-      _regeneratorRuntime.mark(function _callee6(apdu) {
-        var offset, wrappedApdu, magic, response;
+      _regeneratorRuntime.mark(function _callee6() {
+        var invalidApdu, expectedResponse, wrappedApdu, response;
         return _regeneratorRuntime.wrap(function _callee6$(_context6) {
           while (1) {
             switch (_context6.prev = _context6.next) {
               case 0:
-                if (!(apdu.length > 255 - (8 + 32))) {
-                  _context6.next = 2;
-                  break;
-                }
-
-                throw new Error('APDU length too big.');
-
-              case 2:
-                offset = 0;
-                wrappedApdu = Buffer.alloc(7 + 32 + 32 + 1 + 8 + apdu.length);
-                magic = Buffer.from('1122334455667788', 'hex');
-                wrappedApdu[offset++] = 0x00;
-                wrappedApdu[offset++] = 0x02;
-                wrappedApdu[offset++] = 0x00;
-                wrappedApdu[offset++] = 0x00;
-                wrappedApdu[offset++] = 0x00;
-                wrappedApdu.writeUInt16BE(wrappedApdu.length - 7, offset);
-                offset += 2;
-                wrappedApdu.fill(0, offset, offset + 64);
-                offset += 64;
-                wrappedApdu[offset++] = apdu.length + 8;
-                magic.copy(wrappedApdu, offset);
-                offset += 8;
-                apdu.copy(wrappedApdu, offset);
+                invalidApdu = Buffer.from('ff000000', 'hex');
+                expectedResponse = Buffer.from('01000000006e009000', 'hex');
+                wrappedApdu = this._wrapApdu(invalidApdu);
 
                 this._sendCommand(this.U2FHID_MSG, this._channelID, wrappedApdu);
 
-                _context6.next = 21;
+                _context6.next = 6;
                 return this._receiveResponse(this.U2FHID_MSG, this._channelID);
 
-              case 21:
+              case 6:
                 response = _context6.sent;
 
-                if (!(response.length < 2)) {
-                  _context6.next = 24;
+                if (!(response.length !== 5 + 2 + 2)) {
+                  _context6.next = 9;
                   break;
                 }
 
-                throw new Error('Invalid response APDU.');
+                throw new Error('Please update your Secalot firmware to version 4 or greater.');
 
-              case 24:
-                if (!(response[response.length - 2] !== 0x90 || response[response.length - 1] !== 0x00)) {
-                  _context6.next = 26;
+              case 9:
+                if (!(response.compare(expectedResponse) !== 0)) {
+                  _context6.next = 11;
                   break;
                 }
 
-                throw new Error('Invalid response APDU.');
+                throw new Error('Please update your Secalot firmware to version 4 or greater.');
 
-              case 26:
-                response = response.slice(0, response.length - 2);
-                return _context6.abrupt("return", response);
-
-              case 28:
+              case 11:
               case "end":
                 return _context6.stop();
             }
           }
         }, _callee6, this);
+      }));
+
+      function _checkResponseStructure() {
+        return _checkResponseStructure2.apply(this, arguments);
+      }
+
+      return _checkResponseStructure;
+    }()
+  }, {
+    key: "sendApdu",
+    value: function () {
+      var _sendApdu = _asyncToGenerator(
+      /*#__PURE__*/
+      _regeneratorRuntime.mark(function _callee7(apdu) {
+        var wrappedApdu, response;
+        return _regeneratorRuntime.wrap(function _callee7$(_context7) {
+          while (1) {
+            switch (_context7.prev = _context7.next) {
+              case 0:
+                wrappedApdu = this._wrapApdu(apdu);
+
+                this._sendCommand(this.U2FHID_MSG, this._channelID, wrappedApdu);
+
+                _context7.next = 4;
+                return this._receiveResponse(this.U2FHID_MSG, this._channelID);
+
+              case 4:
+                response = _context7.sent;
+
+                if (!(response.length < 5 + 2)) {
+                  _context7.next = 13;
+                  break;
+                }
+
+                if (!(response.length < 2)) {
+                  _context7.next = 8;
+                  break;
+                }
+
+                throw new Error('Invalid response APDU.');
+
+              case 8:
+                if (!(response.length === 2 && (response[response.length - 2] === 0x69 || response[response.length - 1] === 0x85))) {
+                  _context7.next = 12;
+                  break;
+                }
+
+                return _context7.abrupt("return", this.sendApdu(apdu));
+
+              case 12:
+                throw new Error('Invalid response APDU.');
+
+              case 13:
+                if (!(response[0] !== 0x01 || response[1] !== 0x00 || response[2] !== 0x00 || response[3] !== 0x00 || response[4] !== 0x00)) {
+                  _context7.next = 15;
+                  break;
+                }
+
+                throw new Error('Invalid response APDU.');
+
+              case 15:
+                if (!(response[response.length - 2] !== 0x90 || response[response.length - 1] !== 0x00)) {
+                  _context7.next = 17;
+                  break;
+                }
+
+                throw new Error('Invalid response APDU.');
+
+              case 17:
+                response = response.slice(5, response.length - 2);
+                return _context7.abrupt("return", response);
+
+              case 19:
+              case "end":
+                return _context7.stop();
+            }
+          }
+        }, _callee7, this);
       }));
 
       function sendApdu(_x5) {

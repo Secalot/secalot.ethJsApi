@@ -56,6 +56,7 @@ class SecalotTransportNodeHid {
   async open (deviceInfo) {
     this.device = new hid.HID(deviceInfo.path)
     await this._init()
+    await this._checkResponseStructure()
   }
 
   close () {
@@ -172,8 +173,8 @@ class SecalotTransportNodeHid {
     return Buffer.concat(receivedBufs).slice(0, toReceive)
   }
 
-  async sendApdu (apdu) {
-    if (apdu.length > (255 - (8 + 32))) {
+  _wrapApdu (apdu) {
+    if (apdu.length > (255 - 8)) {
       throw new Error('APDU length too big.')
     }
 
@@ -183,7 +184,7 @@ class SecalotTransportNodeHid {
 
     wrappedApdu[offset++] = 0x00
     wrappedApdu[offset++] = 0x02
-    wrappedApdu[offset++] = 0x00
+    wrappedApdu[offset++] = 0x03
     wrappedApdu[offset++] = 0x00
     wrappedApdu[offset++] = 0x00
     wrappedApdu.writeUInt16BE(wrappedApdu.length - 7, offset)
@@ -195,10 +196,46 @@ class SecalotTransportNodeHid {
     offset += 8
     apdu.copy(wrappedApdu, offset)
 
+    return wrappedApdu
+  }
+
+  async _checkResponseStructure () {
+    var invalidApdu = Buffer.from('ff000000', 'hex')
+    var expectedResponse = Buffer.from('01000000006e009000', 'hex')
+
+    var wrappedApdu = this._wrapApdu(invalidApdu)
+
     this._sendCommand(this.U2FHID_MSG, this._channelID, wrappedApdu)
     var response = await this._receiveResponse(this.U2FHID_MSG, this._channelID)
 
-    if (response.length < 2) {
+    if (response.length !== (5 + 2 + 2)) {
+      throw new Error('Please update your Secalot firmware to version 4 or greater.')
+    }
+
+    if (response.compare(expectedResponse) !== 0) {
+      throw new Error('Please update your Secalot firmware to version 4 or greater.')
+    }
+  }
+
+  async sendApdu (apdu) {
+    var wrappedApdu = this._wrapApdu(apdu)
+
+    this._sendCommand(this.U2FHID_MSG, this._channelID, wrappedApdu)
+    var response = await this._receiveResponse(this.U2FHID_MSG, this._channelID)
+
+    if (response.length < (5 + 2)) {
+      if (response.length < 2) {
+        throw new Error('Invalid response APDU.')
+      }
+
+      if ((response.length === 2) && ((response[response.length - 2] === 0x69) || (response[response.length - 1] === 0x85))) {
+        return this.sendApdu(apdu)
+      } else {
+        throw new Error('Invalid response APDU.')
+      }
+    }
+
+    if ((response[0] !== 0x01) || (response[1] !== 0x00) || (response[2] !== 0x00) || (response[3] !== 0x00) || (response[4] !== 0x00)) {
       throw new Error('Invalid response APDU.')
     }
 
@@ -206,7 +243,7 @@ class SecalotTransportNodeHid {
       throw new Error('Invalid response APDU.')
     }
 
-    response = response.slice(0, (response.length - 2))
+    response = response.slice(5, (response.length - 2))
 
     return response
   }
